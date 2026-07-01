@@ -19,7 +19,7 @@
 
 ## Installation Instructions:
 # Before running the script, you need to install the necessary Python libraries. You can do this by running:
-# pip install requests youtube-transcript-api
+# pip install requests "youtube-transcript-api>=1.0.0"
 
 ## Environment Variable Setup:
 # The script requires the Groq API key to be set as an environment variable.
@@ -51,7 +51,8 @@ if not GROQ_API_KEY:
 DEFAULT_PROMPT = "Provide a 3 paragraph summary of the following video transcript with styled markdown:"
 
 # Set the model to use for chat completions
-MODEL = "llama-3.1-8b-instant"
+# Updated from deprecated llama-3.1-8b-instant (decommissioned Aug 16, 2026)
+MODEL = "openai/gpt-oss-20b"
 
 # Create a dictionary to store session information
 session = {}
@@ -62,9 +63,11 @@ def extract_video_id(youtube_url):
     return video_id.group(1) if video_id else None
 
 # Define a function to get the transcript of a video using its video ID
+# Updated for youtube-transcript-api v1.0+ (get_transcript removed in v1.2.0)
 def get_transcript(video_id):
-    transcript = YouTubeTranscriptApi.get_transcript(video_id)
-    transcript_text = ' '.join([t['text'] for t in transcript])
+    ytt_api = YouTubeTranscriptApi()
+    fetched = ytt_api.fetch(video_id)
+    transcript_text = ' '.join([snippet.text for snippet in fetched])
     return transcript_text
 
 # Define a function to create a directory named after the video ID
@@ -92,7 +95,8 @@ def get_summary(transcript_text, user_prompt=None):
                 "content": f"{user_prompt if user_prompt else DEFAULT_PROMPT}\n\n{transcript_text}"
             }
         ],
-        "model": MODEL
+        "model": MODEL,
+        "max_tokens": 8192
     }
     response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
     response.raise_for_status()  # Raise an error for bad responses
